@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TandaBank Nube</title>
-    
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f766e">
+    <title>TandaBank | Flujo Semanal</title>
     
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
@@ -14,259 +11,292 @@
     
     <style>
         :root { 
-            --bg: #eef2f3; --surface: #ffffff; --ink: #111827; --muted: #64748b; 
-            --line: #dbe3ea; --primary: #0f766e; --primary-dark: #115e59; 
-            --accent: #2563eb; --warning: #f59e0b; --danger: #dc2626; 
-            --active-row: #f0fdf4; --active-border: #10b981;
-            --shadow: 0 10px 24px rgba(15, 23, 42, 0.10); 
+            --bg: #f8fafc; --surface: #ffffff; --primary: #0f766e; 
+            --primary-light: #e6fffb; --accent: #2563eb; --ink: #1e293b;
+            --muted: #64748b; --line: #e2e8f0; --danger: #e11d48; --success: #10b981;
         }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { min-height: 100vh; background: #eef2f3; color: var(--ink); padding-bottom: 90px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background: var(--bg); color: var(--ink); padding-bottom: 90px; }
         
-        .header { padding: 20px; background: var(--primary); color: white; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: var(--primary); color: white; padding: 25px 20px; border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; box-shadow: 0 4px 12px rgba(15,118,110,0.15); display: flex; justify-content: space-between; align-items: flex-start;}
+        .header-content { display: flex; flex-direction: column; }
+        .week-indicator { background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; display: inline-block; margin-bottom: 8px; width: fit-content; }
         .sync-badge { background: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; display: flex; align-items: center; gap: 4px;}
         .sync-badge.offline { background: var(--danger); }
         
-        .container { padding: 15px; max-width: 900px; margin: 0 auto; }
-        .card { background: var(--surface); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+        .container { padding: 20px 15px; max-width: 600px; margin: 0 auto; }
+        .card { background: var(--surface); border-radius: 16px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
         
-        /* Turno Activo */
-        .turno-activo-badge { background: var(--active-border); color: white; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 10px; display: inline-block; }
-        tr.active-row { background-color: var(--active-row) !important; border-left: 4px solid var(--active-border); }
+        .beneficiary-card { background: linear-gradient(135deg, #0f766e, #134e4a); color: white; border: 0; }
+        .payout-status { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8; }
+        .beneficiary-name { font-size: 28px; font-weight: 800; margin: 10px 0; }
+        
+        .payment-list { list-style: none; margin-top: 15px; }
+        .payment-item { display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--line); transition: 0.2s; cursor: pointer; }
+        .payment-item:last-child { border-bottom: 0; }
+        .payment-item.paid { background: var(--primary-light); }
+        
+        .user-info { display: flex; align-items: center; gap: 12px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-weight: bold; color: var(--muted); }
+        .paid .user-avatar { background: var(--primary); color: white; }
 
-        /* Estilos de Dashboard */
-        .account-card { background: linear-gradient(135deg, #0f766e, #1e3a8a); color: white; border: 0; }
-        .balance-amount { font-size: 38px; font-weight: 800; }
+        .btn { border: none; padding: 14px; border-radius: 12px; font-weight: bold; cursor: pointer; font-size: 16px; width: 100%; transition: 0.3s; display: flex; align-items: center; justify-content: center;}
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-success { background: var(--success); color: white; margin-top: 15px; }
+        .btn-success:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
         
-        /* Tabla y Controles */
-        .table-container { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; min-width: 650px; }
-        th, td { padding: 14px 10px; text-align: left; border-bottom: 1px solid var(--line); font-size: 14px; }
-        th { background: #f8fafc; color: var(--muted); }
-        .checkbox-pago { width: 22px; height: 22px; accent-color: var(--primary); cursor: pointer; }
-        .btn-action { width: 34px; height: 34px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; border: none; cursor: pointer; color: white; }
-        .btn-wa { background: #25D366; margin-right: 5px; }
-        .btn-del { background: var(--danger); }
-        
-        /* Menú Inferior */
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.96); display: flex; justify-content: center; gap: 8px; padding: 10px 12px; box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.10); border-top: 1px solid var(--line); z-index: 1000; backdrop-filter: blur(12px); }
-        .nav-item { background: transparent; border: none; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 18px; width: min(31%, 150px); border-radius: 8px; cursor: pointer; transition: 0.2s;}
-        .nav-item.active { color: var(--primary); background: #e6fffb; font-weight: bold; }
-        .nav-icon { font-size: 18px; line-height: 1; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; display: flex; justify-content: space-around; padding: 15px; border-top: 1px solid var(--line); z-index: 100; box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.05); }
+        .nav-item { border: none; background: none; color: var(--muted); font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-weight: 500; cursor: pointer; width: 100%;}
+        .nav-item.active { color: var(--primary); }
         
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.3s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .tab-content.active { display: block; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div>
-            <h2 style="font-size: 18px;">TandaBank</h2>
-            <p style="font-size: 12px; opacity: 0.8;">Gestión de Cobranza</p>
+        <div class="header-content">
+            <div id="badgeSemana" class="week-indicator">Cargando...</div>
+            <h1 id="tituloApp">TandaBank</h1>
         </div>
-        <div id="statusNube" class="sync-badge offline">Cargando Nube...</div>
+        <div id="statusNube" class="sync-badge offline">Conectando...</div>
     </div>
 
-    <div class="container">
-        
-        <div id="tab-inicio" class="tab-content active">
-            <div class="card account-card">
-                <p style="font-size: 12px; opacity: 0.8;">TOTAL EN CAJA</p>
-                <p class="balance-amount" id="displayRecaudado">$0.00</p>
-                <div id="infoTurnoActivo" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);"></div>
+    <main class="container">
+        <section id="tab-semana" class="tab-content active">
+            <div class="card beneficiary-card">
+                <p class="payout-status">Beneficiario de la semana</p>
+                <h2 id="nombreBeneficiario">---</h2>
+                <p id="montoTanda">$0.00 a entregar</p>
             </div>
 
             <div class="card">
-                <h3>Resumen de Pagos</h3>
-                <div style="height: 180px; margin-top: 15px;"><canvas id="graficaAvance"></canvas></div>
-                <h4 style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; text-transform: uppercase;">Avance por Participante</h4>
-                <div style="height: 250px; margin-top: 10px;"><canvas id="graficaParticipantes"></canvas></div>
+                <h3>Checklist de Pagos</h3>
+                <div id="listaPagosSemana" class="payment-list">
+                    </div>
+                
+                <button id="btnFinalizarSemana" class="btn btn-success" disabled onclick="finalizarSemana()">
+                    ✔ Entregar Tanda y Abrir Sig. Semana
+                </button>
             </div>
-        </div>
+        </section>
 
-        <div id="tab-participantes" class="tab-content">
+        <section id="tab-config" class="tab-content">
+            
+            <div class="card" style="border: 2px solid var(--primary);">
+                <h3 style="color: var(--primary); margin-bottom: 5px;">Compartir Avance</h3>
+                <p style="font-size: 12px; color: var(--muted); margin-bottom: 15px;">Pásale este enlace a tu grupo. Ellos solo podrán ver la pantalla de "Hoy" y no podrán editar los pagos.</p>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="linkPublico" readonly style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; background: #f1f5f9; color: var(--muted);">
+                    <button onclick="copiarEnlace()" class="btn btn-primary" style="width: auto; padding: 10px 20px; font-size: 14px;">Copiar</button>
+                </div>
+            </div>
+
             <div class="card">
-                <h3>Agregar Participante</h3>
-                <form onsubmit="agregarParticipante(event)" style="display: flex; gap: 10px; margin-top: 10px;">
-                    <input type="text" id="nombre" placeholder="Nombre completo" required style="flex: 2; padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
-                    <button type="submit" style="flex: 1; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor:pointer;">Añadir</button>
+                <h3>Ajustes de Tanda</h3>
+                <div style="margin-top: 15px;">
+                    <label style="display: block; font-size: 13px; margin-bottom: 5px; font-weight: bold;">Monto por Turno ($)</label>
+                    <input type="number" id="inputMonto" value="500" onchange="actualizarMonto()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Participantes</h3>
+                <form onsubmit="agregarParticipante(event)" style="display: flex; gap: 10px; margin-top: 15px;">
+                    <input type="text" id="nuevoNombre" placeholder="Nombre completo" required style="flex: 1; padding: 12px; border-radius: 8px; border: 1px solid var(--line);">
+                    <button type="submit" class="btn btn-primary" style="width: auto;">Añadir</button>
                 </form>
             </div>
-
+            
             <div class="card">
-                <div class="table-container">
-                    <table id="tablaTanda">
-                        <thead id="tablaHead"></thead>
-                        <tbody id="listaParticipantes"></tbody>
-                    </table>
-                </div>
+                <div id="listaAdmin" class="payment-list"></div>
+                <button onclick="reiniciarTanda()" class="btn" style="background: var(--danger); color: white; margin-top: 20px;">🛑 Reiniciar Toda la Tanda</button>
             </div>
-        </div>
+        </section>
+    </main>
 
-        <div id="tab-ajustes" class="tab-content">
-            <div class="card">
-                <h3>Configuración</h3>
-                <div style="margin-top: 15px;">
-                    <label style="display: block; font-size: 13px; margin-bottom: 5px;">Monto por Turno ($)</label>
-                    <input type="number" id="montoAportacion" value="500" onchange="guardarDatos()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--line);">
-                </div>
-            </div>
-
-            <div class="card">
-                <h3>Herramientas</h3>
-                <button onclick="exportarCSV()" style="width: 100%; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; margin-top: 10px; cursor:pointer;">📊 Bajar a Excel</button>
-                <button onclick="reiniciarTanda()" style="width: 100%; margin-top: 30px; background: var(--danger); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor:pointer;">🛑 REINICIAR TANDA</button>
-            </div>
-        </div>
-    </div>
-
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="cambiarPestana('inicio', this)" type="button"><span class="nav-icon">📊</span><span>Inicio</span></button>
-        <button class="nav-item" onclick="cambiarPestana('participantes', this)" type="button"><span class="nav-icon">👥</span><span>Turnos</span></button>
-        <button class="nav-item" onclick="cambiarPestana('ajustes', this)" type="button"><span class="nav-icon">⚙️</span><span>Ajustes</span></button>
+    <nav class="bottom-nav" id="barraNavegacion">
+        <button class="nav-item active" onclick="cambiarTab('semana', this)">
+            <span style="font-size: 20px;">📅</span>Hoy
+        </button>
+        <button class="nav-item" id="navConfigBoton" onclick="cambiarTab('config', this)">
+            <span style="font-size: 20px;">⚙️</span>Config
+        </button>
     </nav>
 
     <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyDitlSM5xe4_B-sO6wA-j8_Juvm0vpA2io",
-  authDomain: "tandabank-f3565.firebaseapp.com",
-  databaseURL: "https://tandabank-f3565-default-rtdb.firebaseio.com",
-  projectId: "tandabank-f3565",
-  storageBucket: "tandabank-f3565.firebasestorage.app",
-  messagingSenderId: "685096962478",
-  appId: "1:685096962478:web:791f3ace6bab3061eee03f",
-  measurementId: "G-16VMBHY3K0"
-};
+        // --- DETECCIÓN DE MODO PÚBLICO ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const esModoPublico = urlParams.get('vista') === 'publica';
 
-        // Inicializar Firebase
+        // Si es público, ocultar controles sensibles inmediatamente
+        if (esModoPublico) {
+            document.getElementById('navConfigBoton').style.display = 'none';
+            document.getElementById('btnFinalizarSemana').style.display = 'none';
+            // Ajustar el menú inferior para que el botón de "Hoy" ocupe el centro
+            document.getElementById('barraNavegacion').style.justifyContent = 'center';
+        }
+
+        // --- CONFIGURACIÓN FIREBASE ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDitlSM5xe4_B-sO6wA-j8_Juvm0vpA2io",
+            authDomain: "tandabank-f3565.firebaseapp.com",
+            databaseURL: "https://tandabank-f3565-default-rtdb.firebaseio.com",
+            projectId: "tandabank-f3565",
+            storageBucket: "tandabank-f3565.firebasestorage.app",
+            messagingSenderId: "685096962478",
+            appId: "1:685096962478:web:791f3ace6bab3061eee03f",
+            measurementId: "G-16VMBHY3K0"
+        };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let participantes = [];
-        let graficaTotal = null, graficaBarras = null;
+        let appData = { semanaActual: 1, montoPorTurno: 500, participantes: [] };
 
-        // --- MAGIA EN TIEMPO REAL ---
-        // Este código escucha la nube. Si alguien hace un cambio, actualiza tu pantalla al instante.
-        db.ref('MiTanda').on('value', (snapshot) => {
-            const datosNube = snapshot.val();
-            
-            if (datosNube) {
-                participantes = datosNube.participantes || [];
-                if(datosNube.monto) document.getElementById('montoAportacion').value = datosNube.monto;
-            } else {
-                participantes = [];
+        // --- SINCRONIZACIÓN ---
+        db.ref('TandaLive').on('value', (snap) => {
+            const val = snap.val();
+            if (val) {
+                appData = val;
+                if (!appData.participantes) appData.participantes = [];
+                if (!appData.montoPorTurno) appData.montoPorTurno = 500;
+                
+                document.getElementById('inputMonto').value = appData.montoPorTurno;
+                renderizarTodo();
             }
-            
-            document.getElementById('statusNube').innerHTML = "🟢 Nube Sincronizada";
+            document.getElementById('statusNube').innerHTML = esModoPublico ? "🟢 Actualizado" : "🟢 En línea";
             document.getElementById('statusNube').className = "sync-badge";
-            actualizarInterfaz();
         }, (error) => {
             document.getElementById('statusNube').innerHTML = "🔴 Sin conexión";
             document.getElementById('statusNube').className = "sync-badge offline";
         });
 
-        // --- GUARDAR EN LA NUBE ---
-        function guardarDatos() {
-            db.ref('MiTanda').set({
-                participantes: participantes,
-                monto: document.getElementById('montoAportacion').value
-            });
-            // Ya no llamamos actualizarInterfaz aquí, Firebase lo hace solo cuando detecta el cambio arriba.
+        function guardar() {
+            if(!esModoPublico) db.ref('TandaLive').set(appData);
         }
 
-        // --- NAVEGACIÓN ---
-        function cambiarPestana(id, btn) {
+        // --- LÓGICA DE INTERFAZ ---
+        function copiarEnlace() {
+            const campoTexto = document.getElementById('linkPublico');
+            campoTexto.select();
+            document.execCommand('copy');
+            alert('¡Enlace copiado! Ya puedes mandarlo por WhatsApp.');
+        }
+
+        function togglePago(participanteId) {
+            // Bloqueo total: Si es modo público, no hace nada al hacer clic
+            if (esModoPublico) return; 
+
+            const p = appData.participantes.find(x => x.id === participanteId);
+            const sem = appData.semanaActual;
+            if (!p.pagosRealizados) p.pagosRealizados = {};
+            
+            p.pagosRealizados[sem] = !p.pagosRealizados[sem];
+            guardar();
+        }
+
+        function renderizarTodo() {
+            // Generar enlace para compartir (eliminando cualquier parámetro previo)
+            const urlBase = window.location.href.split('?')[0];
+            document.getElementById('linkPublico').value = `${urlBase}?vista=publica`;
+
+            const sem = appData.semanaActual;
+            const beneficiario = appData.participantes.find(p => p.turno === sem) || { nombre: "¡Tanda Finalizada!" };
+            const totalPozo = appData.montoPorTurno * appData.participantes.length;
+
+            document.getElementById('badgeSemana').innerText = `SEMANA ${sem}`;
+            document.getElementById('nombreBeneficiario').innerText = beneficiario.nombre;
+            document.getElementById('montoTanda').innerText = (beneficiario.nombre === "¡Tanda Finalizada!" || appData.participantes.length === 0) 
+                ? `Proceso completado` 
+                : `$${totalPozo.toLocaleString('es-MX')} a entregar`;
+
+            const lista = document.getElementById('listaPagosSemana');
+            lista.innerHTML = '';
+            
+            let pagaronTodos = appData.participantes.length > 0;
+
+            appData.participantes.forEach(p => {
+                if (!p.pagosRealizados) p.pagosRealizados = {};
+                const haPagado = p.pagosRealizados[sem] || false;
+                if (!haPagado) pagaronTodos = false;
+
+                const item = document.createElement('div');
+                item.className = `payment-item ${haPagado ? 'paid' : ''}`;
+                
+                // Efectos visuales de bloqueo para participantes
+                if (!esModoPublico) {
+                    item.onclick = () => togglePago(p.id);
+                } else {
+                    item.style.cursor = 'default';
+                }
+
+                item.innerHTML = `
+                    <div class="user-info">
+                        <div class="user-avatar">${p.nombre[0].toUpperCase()}</div>
+                        <div>
+                            <p style="font-weight:600">${p.nombre}</p>
+                            <p style="font-size:12px; color:var(--muted)">Turno #${p.turno}</p>
+                        </div>
+                    </div>
+                    <span style="font-size: 13px; font-weight: bold;">${haPagado ? '✅ PAGADO' : '⏳ PENDIENTE'}</span>
+                `;
+                lista.appendChild(item);
+            });
+
+            if (!esModoPublico) {
+                document.getElementById('btnFinalizarSemana').disabled = !pagaronTodos || beneficiario.nombre === "¡Tanda Finalizada!";
+                
+                const listaAdmin = document.getElementById('listaAdmin');
+                listaAdmin.innerHTML = appData.participantes.map(p => `
+                    <div class="payment-item" style="padding: 10px 0; cursor: default;">
+                        <span style="font-weight: 500;">#${p.turno} - ${p.nombre}</span>
+                        <button onclick="eliminarParticipante(${p.id})" style="color:var(--danger); background:none; border:none; font-weight:bold; cursor: pointer; padding: 5px;">Borrar</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function finalizarSemana() {
+            if (esModoPublico) return;
+            const beneficiario = appData.participantes.find(p => p.turno === appData.semanaActual);
+            if (confirm(`¿Confirmas que se entregó el pozo a ${beneficiario.nombre}?`)) {
+                appData.semanaActual += 1;
+                guardar();
+                alert("¡Dinero entregado!");
+            }
+        }
+
+        function agregarParticipante(e) {
+            e.preventDefault();
+            appData.participantes.push({ id: Date.now(), nombre: document.getElementById('nuevoNombre').value, turno: appData.participantes.length + 1, pagosRealizados: {} });
+            document.getElementById('nuevoNombre').value = '';
+            guardar();
+        }
+
+        function actualizarMonto() { appData.montoPorTurno = parseFloat(document.getElementById('inputMonto').value) || 0; guardar(); }
+        
+        function cambiarTab(id, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + id).classList.add('active');
             btn.classList.add('active');
         }
 
-        // --- ACCIONES DE DATOS ---
-        function agregarParticipante(e) {
-            e.preventDefault();
-            const nombre = document.getElementById('nombre').value;
-            participantes.push({ turno: participantes.length + 1, nombre, pagos: [] });
-            document.getElementById('nombre').value = '';
-            guardarDatos();
-        }
-
-        function marcarPago(turno, index, checked) {
-            const p = participantes.find(x => x.turno === turno);
-            if (p) { p.pagos[index] = checked; guardarDatos(); }
-        }
-
-        function eliminarParticipante(t) {
-            if(confirm('¿Borrar?')) { participantes = participantes.filter(p => p.turno !== t); guardarDatos(); }
+        function eliminarParticipante(id) {
+            if(confirm('¿Eliminar participante?')) {
+                appData.participantes = appData.participantes.filter(p => p.id !== id);
+                appData.participantes.forEach((p, index) => p.turno = index + 1);
+                guardar();
+            }
         }
 
         function reiniciarTanda() {
-            if(confirm('¿Borrar todo en la nube?')) { participantes = []; guardarDatos(); }
+            if(confirm('🚨 ¡CUIDADO! Esto borrará a todos. ¿Estás seguro?')) {
+                appData.semanaActual = 1; appData.participantes = []; guardar();
+            }
         }
-
-        function obtenerSemanaActual() {
-            let maxSemana = 1;
-            participantes.forEach(p => {
-                if(p.pagos) p.pagos.forEach((pago, index) => { if (pago) maxSemana = Math.max(maxSemana, index + 1); });
-            });
-            return maxSemana;
-        }
-
-        // --- ACTUALIZACIÓN VISUAL ---
-        function actualizarInterfaz() {
-            const monto = parseFloat(document.getElementById('montoAportacion').value) || 0;
-            const semanaActiva = obtenerSemanaActual();
-            const totalTurnos = participantes.length;
-            let recaudadoTotal = 0;
-
-            const cobraHoy = participantes.find(p => p.turno === semanaActiva);
-            const infoDiv = document.getElementById('infoTurnoActivo');
-            infoDiv.innerHTML = (cobraHoy && totalTurnos > 0) ? `
-                <div class="turno-activo-badge">Semana Actual: ${semanaActiva}</div>
-                <p style="font-size: 14px;">Cobra hoy: <b>${cobraHoy.nombre}</b></p>
-                <p style="font-size: 12px; opacity: 0.8;">Monto: $${(monto * totalTurnos).toLocaleString()}</p>
-            ` : '<p style="font-size: 13px; opacity: 0.7;">Sin participantes activos.</p>';
-
-            const thead = document.getElementById('tablaHead');
-            const tbody = document.getElementById('listaParticipantes');
-            thead.innerHTML = `<tr><th>Turno</th><th>Participante</th>${Array.from({length: totalTurnos}, (_, i) => `<th>P${i+1}</th>`).join('')}<th>Acción</th></tr>`;
-            tbody.innerHTML = '';
-
-            participantes.forEach(p => {
-                if(!p.pagos) p.pagos = [];
-                const esSuTurno = p.turno === semanaActiva;
-                let filaHTML = `<td>${esSuTurno ? '⭐ ' : ''}#${p.turno}</td><td><b>${p.nombre}</b></td>`;
-                for(let i=0; i<totalTurnos; i++) {
-                    const pagado = p.pagos[i] || false;
-                    if (pagado) recaudadoTotal += monto;
-                    filaHTML += `<td><input type="checkbox" class="checkbox-pago" ${pagado ? 'checked' : ''} onchange="marcarPago(${p.turno}, ${i}, this.checked)"></td>`;
-                }
-                const msg = encodeURIComponent(`Hola ${p.nombre}, te recuerdo tu pago de $${monto} para la tanda.`);
-                filaHTML += `<td><a href="https://wa.me/?text=${msg}" target="_blank" class="btn-action btn-wa">💬</a><button onclick="eliminarParticipante(${p.turno})" class="btn-action btn-del">✕</button></td>`;
-                const fila = document.createElement('tr');
-                if (esSuTurno) fila.className = 'active-row';
-                fila.innerHTML = filaHTML; tbody.appendChild(fila);
-            });
-
-            document.getElementById('displayRecaudado').innerText = `$${recaudadoTotal.toLocaleString()}`;
-            actualizarGraficas(recaudadoTotal, (monto * totalTurnos * totalTurnos) - recaudadoTotal);
-        }
-
-        function actualizarGraficas(p, f) {
-            if (!window.Chart || participantes.length === 0) return;
-            const ctxDona = document.getElementById('graficaAvance').getContext('2d');
-            if (graficaTotal) graficaTotal.destroy();
-            graficaTotal = new Chart(ctxDona, { type: 'doughnut', data: { labels: ['Recaudado', 'Pendiente'], datasets: [{ data: [p, f <= 0 ? 0.1 : f], backgroundColor: ['#0f766e', '#dbe3ea'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { legend: { display: false } } } });
-
-            const ctxBarras = document.getElementById('graficaParticipantes').getContext('2d');
-            if (graficaBarras) graficaBarras.destroy();
-            graficaBarras = new Chart(ctxBarras, { type: 'bar', data: { labels: participantes.map(x => x.nombre.split(' ')[0]), datasets: [{ data: participantes.map(x => Math.round(((x.pagos || []).filter(Boolean).length / (participantes.length || 1)) * 100)), backgroundColor: '#2563eb', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
-        }
-
-        function exportarCSV() { let csv = "Turno,Nombre,Pagado\n" + participantes.map(p => `${p.turno},${p.nombre},${(p.pagos||[]).filter(x=>x).length * parseFloat(document.getElementById('montoAportacion').value)}`).join("\n"); const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob(["\uFEFF"+csv], { type: 'text/csv' })); a.download = 'tanda.csv'; a.click(); }
-
     </script>
 </body>
 </html>
