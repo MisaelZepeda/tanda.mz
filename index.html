@@ -3,11 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TandaBank Pro</title>
+    <title>TandaBank Nube</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f766e">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-database-compat.js"></script>
     
     <style>
         :root { 
@@ -20,7 +23,10 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { min-height: 100vh; background: #eef2f3; color: var(--ink); padding-bottom: 90px; }
         
-        .header { padding: 20px; background: var(--primary); color: white; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; }
+        .header { padding: 20px; background: var(--primary); color: white; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .sync-badge { background: #10b981; padding: 4px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; display: flex; align-items: center; gap: 4px;}
+        .sync-badge.offline { background: var(--danger); }
+        
         .container { padding: 15px; max-width: 900px; margin: 0 auto; }
         .card { background: var(--surface); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
         
@@ -42,24 +48,9 @@
         .btn-wa { background: #25D366; margin-right: 5px; }
         .btn-del { background: var(--danger); }
         
-        /* DISEÑO DE MENÚ RECUPERADO (Estilo V4) */
-        .bottom-nav { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: rgba(255, 255, 255, 0.96); 
-            display: flex; justify-content: center; gap: 8px; 
-            padding: 10px 12px; 
-            box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.10); 
-            border-top: 1px solid var(--line); 
-            z-index: 1000; 
-            backdrop-filter: blur(12px); 
-        }
-        .nav-item { 
-            background: transparent; border: none; color: var(--muted); 
-            font-size: 12px; display: flex; flex-direction: column; 
-            align-items: center; gap: 4px; padding: 7px 18px; 
-            width: min(31%, 150px); border-radius: 8px; 
-            cursor: pointer; transition: 0.2s;
-        }
+        /* Menú Inferior */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.96); display: flex; justify-content: center; gap: 8px; padding: 10px 12px; box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.10); border-top: 1px solid var(--line); z-index: 1000; backdrop-filter: blur(12px); }
+        .nav-item { background: transparent; border: none; color: var(--muted); font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 18px; width: min(31%, 150px); border-radius: 8px; cursor: pointer; transition: 0.2s;}
         .nav-item.active { color: var(--primary); background: #e6fffb; font-weight: bold; }
         .nav-icon { font-size: 18px; line-height: 1; }
         
@@ -71,8 +62,11 @@
 <body>
 
     <div class="header">
-        <h2 style="font-size: 18px;">TandaBank Pro</h2>
-        <p style="font-size: 12px; opacity: 0.8;">Gestión de Turnos y Cobranza</p>
+        <div>
+            <h2 style="font-size: 18px;">TandaBank</h2>
+            <p style="font-size: 12px; opacity: 0.8;">Gestión de Cobranza</p>
+        </div>
+        <div id="statusNube" class="sync-badge offline">Cargando Nube...</div>
     </div>
 
     <div class="container">
@@ -121,39 +115,68 @@
             </div>
 
             <div class="card">
-                <h3>Herramientas y Respaldo</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
-                    <button onclick="exportarCSV()" style="background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; cursor:pointer;">📊 Excel</button>
-                    <button onclick="descargarRespaldo()" style="background: #4f46e5; color: white; border: none; padding: 12px; border-radius: 8px; cursor:pointer;">💾 Guardar JSON</button>
-                </div>
-                <button onclick="document.getElementById('inputCargar').click()" style="width: 100%; margin-top: 10px; background: var(--warning); color: white; border: none; padding: 12px; border-radius: 8px; cursor:pointer;">📂 Cargar Respaldo</button>
-                <input type="file" id="inputCargar" accept=".json" style="display: none;" onchange="cargarRespaldo(event)">
+                <h3>Herramientas</h3>
+                <button onclick="exportarCSV()" style="width: 100%; background: #10b981; color: white; border: none; padding: 12px; border-radius: 8px; margin-top: 10px; cursor:pointer;">📊 Bajar a Excel</button>
                 <button onclick="reiniciarTanda()" style="width: 100%; margin-top: 30px; background: var(--danger); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor:pointer;">🛑 REINICIAR TANDA</button>
             </div>
         </div>
     </div>
 
     <nav class="bottom-nav">
-        <button class="nav-item active" onclick="cambiarPestana('inicio', this)" type="button">
-            <span class="nav-icon">📊</span>
-            <span>Inicio</span>
-        </button>
-        <button class="nav-item" onclick="cambiarPestana('participantes', this)" type="button">
-            <span class="nav-icon">👥</span>
-            <span>Turnos</span>
-        </button>
-        <button class="nav-item" onclick="cambiarPestana('ajustes', this)" type="button">
-            <span class="nav-icon">⚙️</span>
-            <span>Ajustes</span>
-        </button>
+        <button class="nav-item active" onclick="cambiarPestana('inicio', this)" type="button"><span class="nav-icon">📊</span><span>Inicio</span></button>
+        <button class="nav-item" onclick="cambiarPestana('participantes', this)" type="button"><span class="nav-icon">👥</span><span>Turnos</span></button>
+        <button class="nav-item" onclick="cambiarPestana('ajustes', this)" type="button"><span class="nav-icon">⚙️</span><span>Ajustes</span></button>
     </nav>
 
     <script>
-        let participantes = JSON.parse(localStorage.getItem('tanda_participantes')) || [];
+const firebaseConfig = {
+  apiKey: "AIzaSyDitlSM5xe4_B-sO6wA-j8_Juvm0vpA2io",
+  authDomain: "tandabank-f3565.firebaseapp.com",
+  databaseURL: "https://tandabank-f3565-default-rtdb.firebaseio.com",
+  projectId: "tandabank-f3565",
+  storageBucket: "tandabank-f3565.firebasestorage.app",
+  messagingSenderId: "685096962478",
+  appId: "1:685096962478:web:791f3ace6bab3061eee03f",
+  measurementId: "G-16VMBHY3K0"
+};
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        let participantes = [];
         let graficaTotal = null, graficaBarras = null;
 
-        document.getElementById('montoAportacion').value = localStorage.getItem('tanda_monto') || 500;
+        // --- MAGIA EN TIEMPO REAL ---
+        // Este código escucha la nube. Si alguien hace un cambio, actualiza tu pantalla al instante.
+        db.ref('MiTanda').on('value', (snapshot) => {
+            const datosNube = snapshot.val();
+            
+            if (datosNube) {
+                participantes = datosNube.participantes || [];
+                if(datosNube.monto) document.getElementById('montoAportacion').value = datosNube.monto;
+            } else {
+                participantes = [];
+            }
+            
+            document.getElementById('statusNube').innerHTML = "🟢 Nube Sincronizada";
+            document.getElementById('statusNube').className = "sync-badge";
+            actualizarInterfaz();
+        }, (error) => {
+            document.getElementById('statusNube').innerHTML = "🔴 Sin conexión";
+            document.getElementById('statusNube').className = "sync-badge offline";
+        });
 
+        // --- GUARDAR EN LA NUBE ---
+        function guardarDatos() {
+            db.ref('MiTanda').set({
+                participantes: participantes,
+                monto: document.getElementById('montoAportacion').value
+            });
+            // Ya no llamamos actualizarInterfaz aquí, Firebase lo hace solo cuando detecta el cambio arriba.
+        }
+
+        // --- NAVEGACIÓN ---
         function cambiarPestana(id, btn) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
@@ -161,6 +184,7 @@
             btn.classList.add('active');
         }
 
+        // --- ACCIONES DE DATOS ---
         function agregarParticipante(e) {
             e.preventDefault();
             const nombre = document.getElementById('nombre').value;
@@ -169,23 +193,28 @@
             guardarDatos();
         }
 
-        function guardarDatos() {
-            localStorage.setItem('tanda_participantes', JSON.stringify(participantes));
-            localStorage.setItem('tanda_monto', document.getElementById('montoAportacion').value);
-            actualizarInterfaz();
-        }
-
         function marcarPago(turno, index, checked) {
             const p = participantes.find(x => x.turno === turno);
             if (p) { p.pagos[index] = checked; guardarDatos(); }
         }
 
+        function eliminarParticipante(t) {
+            if(confirm('¿Borrar?')) { participantes = participantes.filter(p => p.turno !== t); guardarDatos(); }
+        }
+
+        function reiniciarTanda() {
+            if(confirm('¿Borrar todo en la nube?')) { participantes = []; guardarDatos(); }
+        }
+
         function obtenerSemanaActual() {
             let maxSemana = 1;
-            participantes.forEach(p => p.pagos.forEach((pago, index) => { if (pago) maxSemana = Math.max(maxSemana, index + 1); }));
+            participantes.forEach(p => {
+                if(p.pagos) p.pagos.forEach((pago, index) => { if (pago) maxSemana = Math.max(maxSemana, index + 1); });
+            });
             return maxSemana;
         }
 
+        // --- ACTUALIZACIÓN VISUAL ---
         function actualizarInterfaz() {
             const monto = parseFloat(document.getElementById('montoAportacion').value) || 0;
             const semanaActiva = obtenerSemanaActual();
@@ -206,6 +235,7 @@
             tbody.innerHTML = '';
 
             participantes.forEach(p => {
+                if(!p.pagos) p.pagos = [];
                 const esSuTurno = p.turno === semanaActiva;
                 let filaHTML = `<td>${esSuTurno ? '⭐ ' : ''}#${p.turno}</td><td><b>${p.nombre}</b></td>`;
                 for(let i=0; i<totalTurnos; i++) {
@@ -225,23 +255,18 @@
         }
 
         function actualizarGraficas(p, f) {
-            if (!window.Chart) return;
+            if (!window.Chart || participantes.length === 0) return;
             const ctxDona = document.getElementById('graficaAvance').getContext('2d');
             if (graficaTotal) graficaTotal.destroy();
             graficaTotal = new Chart(ctxDona, { type: 'doughnut', data: { labels: ['Recaudado', 'Pendiente'], datasets: [{ data: [p, f <= 0 ? 0.1 : f], backgroundColor: ['#0f766e', '#dbe3ea'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '80%', plugins: { legend: { display: false } } } });
 
             const ctxBarras = document.getElementById('graficaParticipantes').getContext('2d');
             if (graficaBarras) graficaBarras.destroy();
-            graficaBarras = new Chart(ctxBarras, { type: 'bar', data: { labels: participantes.map(x => x.nombre.split(' ')[0]), datasets: [{ data: participantes.map(x => Math.round((x.pagos.filter(Boolean).length / (participantes.length || 1)) * 100)), backgroundColor: '#2563eb', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
+            graficaBarras = new Chart(ctxBarras, { type: 'bar', data: { labels: participantes.map(x => x.nombre.split(' ')[0]), datasets: [{ data: participantes.map(x => Math.round(((x.pagos || []).filter(Boolean).length / (participantes.length || 1)) * 100)), backgroundColor: '#2563eb', borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', scales: { x: { min: 0, max: 100 } }, plugins: { legend: { display: false } } } });
         }
 
-        function descargarRespaldo() { const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob([JSON.stringify({ participantes, monto: document.getElementById('montoAportacion').value })], { type: 'application/json' })); a.download = 'respaldo_tanda.json'; a.click(); }
-        function cargarRespaldo(e) { const r = new FileReader(); r.onload = (ev) => { const d = JSON.parse(ev.target.result); participantes = d.participantes; document.getElementById('montoAportacion').value = d.monto; guardarDatos(); }; r.readAsText(e.target.files[0]); }
-        function eliminarParticipante(t) { if(confirm('¿Borrar?')) { participantes = participantes.filter(p => p.turno !== t); guardarDatos(); } }
-        function reiniciarTanda() { if(confirm('¿Borrar todo?')) { participantes = []; guardarDatos(); } }
-        function exportarCSV() { let csv = "Turno,Nombre,Pagado\n" + participantes.map(p => `${p.turno},${p.nombre},${p.pagos.filter(x=>x).length * parseFloat(document.getElementById('montoAportacion').value)}`).join("\n"); const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob(["\uFEFF"+csv], { type: 'text/csv' })); a.download = 'tanda.csv'; a.click(); }
+        function exportarCSV() { let csv = "Turno,Nombre,Pagado\n" + participantes.map(p => `${p.turno},${p.nombre},${(p.pagos||[]).filter(x=>x).length * parseFloat(document.getElementById('montoAportacion').value)}`).join("\n"); const a = document.createElement('a'); a.href = window.URL.createObjectURL(new Blob(["\uFEFF"+csv], { type: 'text/csv' })); a.download = 'tanda.csv'; a.click(); }
 
-        actualizarInterfaz();
     </script>
 </body>
 </html>
