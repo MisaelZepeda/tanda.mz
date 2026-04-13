@@ -129,6 +129,11 @@
     </nav>
 
     <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW falló:', err));
+            });
+        }
 const firebaseConfig = {
   apiKey: "AIzaSyDitlSM5xe4_B-sO6wA-j8_Juvm0vpA2io",
   authDomain: "tandabank-f3565.firebaseapp.com",
